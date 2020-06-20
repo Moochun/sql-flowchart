@@ -96,7 +96,7 @@ class Mermaid_creator():
     # 05 Setting Node Color
     def add_node_color(self, node_id, color) :
         # Setting node Color
-        self.mermaid_txt += "\n style " + node_id + " fill:" + color + ";"
+        self.mermaid_txt += " style " + node_id + " fill:" + color + ";" # live editor no need setting \n
 
 
 # %%
@@ -187,7 +187,7 @@ class Sqltoflowchart():
             print("Empty relation (Class Sqltoflowchart - def Create_relationtxt)")
         else :
             relation_value = node[ "state_value" ].tolist()[0]
-            relation_value = re.sub("\\(|\\)", " ", relation_value)
+            relation_value = re.sub("\\(|\\)", " ", relation_value) # Live Editor can get bracket "(" ")"
             relation_value = re.sub(";", "", relation_value)
             relation_value = re.sub(self.upper_lower_regrex("INNER JOIN "), "<b>INNER JOIN </b>", relation_value)
             relation_value = re.sub(self.upper_lower_regrex("LEFT JOIN "), "<b>LEFT JOIN </b>", relation_value)
@@ -196,15 +196,17 @@ class Sqltoflowchart():
             relation_value = re.sub(self.upper_lower_regrex("CROSS JOIN "), "<b>CROSS JOIN </b>", relation_value)
             relation_value = re.sub(self.upper_lower_regrex("DISTINCT "), "<b>DISTINCT </b>", relation_value)
             relation_value = re.sub(self.upper_lower_regrex("ON "), "ON <br>", relation_value)
-            relation_value = re.sub(self.upper_lower_regrex(","), ", <br>", relation_value)
+            relation_value = re.sub(self.upper_lower_regrex("AND "), "AND <br>", relation_value)
+            if node[ "state" ].tolist()[0] in ["SELECT"] :
+                relation_value = re.sub(self.upper_lower_regrex(","), ", <br>", relation_value)
 #             print("Need txt relation (Class Sqltoflowchart - def Create_relationtxt)")
         ## Add <center> </center>
-        relation_value = "<center>" + relation_value + "</center>"
+        relation_value = "<center>" + relation_value + "</center>" # Live Editor can get bracket "(" ")"
         
         return(relation_value)    
     
     #03 Create mermaid plot
-    def mermaid_plot(self):
+    def mermaid_plot(self, relation_ignore = []):
         #### 03_2 Initial Subgraph start drawing
         subgraph_sign = 0 # Record the subgraph , start->set 1, end->set 0
         
@@ -244,9 +246,9 @@ class Sqltoflowchart():
                 self.mc.add_node(shape = "diamond", txt = node_txt, node_id = from_id)
             
             
-            #03_4 From relation create (from_node)===============================
+            #03_4 From relation create (from_node) (Ignore Show by param : relation_ignore)===============================
             relation_txt = self.Create_relationtxt(node_id = from_id, node = from_node)
-            if from_node["token_tag"].tolist()[0] == "token" :
+            if from_node["token_tag"].tolist()[0] == "token" or from_node["state"].tolist()[0] in relation_ignore: # Setting relation Ignore show
                 self.mc.add_link(shape = "arrowhead", txt = "")
             else : 
                 self.mc.add_link(shape = "arrowhead", txt = relation_txt)
