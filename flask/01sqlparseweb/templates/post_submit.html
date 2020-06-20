@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Hello Page</title>
+</head>
+<body>
+    <div><a href="https://mermaid-js.github.io/mermaid-live-editor">Mermaid live Editor</a> 
+	Configuration: 
+{
+  "theme": "default",
+  "securityLevel" : "loose"
+}</div>
+	<div>1. Query insert and click Submit </div>
+	<div>2. Get the Mermaid structure </div>
+	<div>3. Click Mermaid Live editor and show the result </div>
+    <form method='post' action="/post_submit"> 
+		<div> Query insert (with Select) </div>
+        <textarea name="query" cols="100" rows="25">{{remindtext}}</textarea>
+        <button type='submit'>Submit</button>
+    </form>
+	
+	<form method='post' action="/post_submit"> 
+	    <div> Mermaid structure show </div>
+        <input name="showstructure" type="text" size = 300 value = "{{mermaid}}">
+    </form>
+</body>
+</html>
