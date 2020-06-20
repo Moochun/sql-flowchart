@@ -64,7 +64,10 @@ class Sastructure():
             print("=======================")
             print(re.sub("QUIT;", "", string).strip())
             sql_parsed_list[ str(query_id) ] = Sqlstructure(string)
-
+            
+            # Only Select -> get MAIN query and Set QUERYID.query <query_id> be the TABLE name
+            if "TABLE" not in list( sql_parsed_list[ str(query_id) ].structured_dict['MAIN'].keys() ):
+                sql_parsed_list[ str(query_id) ].structured_dict['MAIN']['TABLE'] = {'token' : [['', 'NOCREATETB', 'query' + str(query_id)]], 'value': 'NOCREATETB.query' + str(query_id)}
         return( sql_parsed_list )
 
 # %% [markdown]
@@ -104,18 +107,18 @@ class Sastructure():
 
         for item in sql_parsed_list.items():
             ## initial var : Setting query_id, subquery_dict 
-            ## 00_1 initial from_id and to_id To initial th relation by Different query
             query_id = item[0]
             subquery_dict = item[1].structured_dict
-            from_id = ""
-            to_id = ""
 
             # 01 Getting dict 
             ## 01_1 MAIN, MAIN_SELECT.....
             ## 01_2 "FROM", "WHERE", "GROUP BY", "HAVING", "SELECT", "ORDER BY", "LIMIT", "TABLE"
             ## 01_3 "token" get
             for item_subq in subquery_dict.items() : ## 01_1
-
+                
+                ## 01_1 initial from_id and to_id To initial th relation by Different query
+                from_id = ""
+                to_id = ""
                 ## initial var : Get subquery name and Dict
                 subq_name = item_subq[0]
                 subq_value = item_subq[1]
