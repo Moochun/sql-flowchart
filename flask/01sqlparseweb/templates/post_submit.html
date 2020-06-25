@@ -6,12 +6,16 @@
 </head>
 <body>
 	<h1>Sql To Flowchart</h1>
-    <div><a href="https://mermaid-js.github.io/mermaid-live-editor">Mermaid live Editor</a> 
+    <div><a href="http://10.95.42.31:8000/">Mermaid live Editor</a> 
 	Setting Configuration: 
 {
   "theme": "default",
   "securityLevel" : "loose"
 }</div>
+	<div><h3>Notice</h3> </div>
+	<div>1. from table cannot separate by "," </div>
+	<div>2. Only "PROC SQL", "DATA STEP", "PROC TRANSPOSE", "PROC SORT" can transform </div>
+	<div><h3>Manual</h3> </div>
 	<div>1. Query insert and click Submit </div>
 	<div>2. Get the Mermaid structure </div>
 	<div>3. Click Mermaid Live editor and show the result </div>
@@ -23,7 +27,7 @@
 	
 	<form method='post' action="/post_submit"> 
 	    <div> Mermaid structure show (ctrl + A -> ctrl + C) </div>
-        <input name="showstructure" type="text" size = 300 value = "{{mermaid}}">
+        <textarea name="showstructure" cols="300" rows="20">{{mermaid}}</textarea>
     </form>
 </body>
 </html>

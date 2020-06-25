@@ -230,7 +230,7 @@ class Sqlstructure():
                     ## subq_key NAME Remove Parenthesis and Add SUBQ. databasename 
                     subquerys[this_key] = re.sub(
                         "\\(" + next_key + "\\)",
-                        "SUBQ."+ next_key,
+                        " SUBQ."+ next_key,
                         subquerys[this_key])
 
                     print(subquerys[this_key])
@@ -285,7 +285,7 @@ class Sqlstructure():
             if token.value.upper() in query_signs : 
                 continue
             elif statement not in list(token_dict.keys()) :
-                token_dict[statement] = {"value" : re.sub("\n\s+", "", token.value.strip())} # Replace \n and after space
+                token_dict[statement] = {"value" : re.sub("\n\s+", "", token.value.strip()) } # Replace \n and after space
             else :
                 token_dict[statement]["value"] += (" " + re.sub("\n\s+", "", token.value.strip()))# Replace \n and after space
 
@@ -294,7 +294,7 @@ class Sqlstructure():
             ## 03_1 Find Idntifier (Idntifier need use isinstance to check)
             ## 03_2 get alias_name, db_name, real_name
             ## 03_3 save alias_name, db_name, real_name
-            if (statement == "FROM" or statement == "TABLE") and isinstance(token, Identifier):
+            if (statement == "FROM" or statement == "TABLE") and isinstance(token, Identifier):# identifier check and do something 
                 
                 # 03_0 Setting Special state and check 
                 if statement_special == "ON" :
@@ -309,6 +309,24 @@ class Sqlstructure():
                     token_dict[statement]["token"] = [[alias_name, db_name, real_name]]
                 else :
                     token_dict[statement]["token"].append([alias_name, db_name, real_name])
+                    
+            if (statement == "FROM" or statement == "TABLE") and isinstance(token, IdentifierList): # [from AAA, BBB] will be identifierlist check and do something 
+                for subtoken in token.tokens : 
+                    # 03_0 Setting Special state and check 
+                    if  isinstance(subtoken, Identifier) : # identifier check and do something 
+                        if statement_special == "ON" :
+                            continue
+
+                        # 03_2 get names
+                        alias_name = subtoken.get_alias()
+                        db_name = subtoken.get_parent_name()
+                        real_name = subtoken.get_real_name()
+
+                        if "token" not in list(token_dict[statement].keys()) :
+                            token_dict[statement]["token"] = [[alias_name, db_name, real_name]]
+                        else :
+                            token_dict[statement]["token"].append([alias_name, db_name, real_name])
+                    
         return token_dict
 
 # %% [markdown]

@@ -148,7 +148,7 @@ class Mermaid_creator():
 import pandas as pd
 class Sqltoflowchart():
     
-    def __init__(self, from_to_node, from_to_query, node_property):
+    def __init__(self, from_to_node = "", from_to_query = "", node_property = [["from","to"],["1","2"]]):
         self.from_to_node = from_to_node
         self.from_to_query = from_to_query
         self.node_property = pd.DataFrame(node_property[1:], columns= node_property[0])
@@ -181,32 +181,55 @@ class Sqltoflowchart():
     # 02 Create relation txt
     def Create_relationtxt(self, node_id, node):
         token_tag = node["token_tag"].tolist()[0]
+        state = node["state"].tolist()[0]
         relation_value = ""
         
         if token_tag == "token" : 
             print("Empty relation (Class Sqltoflowchart - def Create_relationtxt)")
         else :
             relation_value = node[ "state_value" ].tolist()[0]
-            relation_value = re.sub("\\(|\\)", " ", relation_value) # Live Editor can get bracket "(" ")"
+            if state != "SELECT" : 
+                relation_value = re.sub("\\(|\\)", " ", relation_value) # Live Editor can get bracket "(" ")"
+            relation_value = re.sub('\\"', "'", relation_value) # double to single 
             relation_value = re.sub(";", "", relation_value)
-            relation_value = re.sub(self.upper_lower_regrex("INNER JOIN "), "<b>INNER JOIN </b>", relation_value)
-            relation_value = re.sub(self.upper_lower_regrex("LEFT JOIN "), "<b>LEFT JOIN </b>", relation_value)
-            relation_value = re.sub(self.upper_lower_regrex("RIGHT JOIN "), "<b>RIGHT JOIN </b>", relation_value)
-            relation_value = re.sub(self.upper_lower_regrex("OUTER JOIN "), "<b>OUTER JOIN </b>", relation_value)
-            relation_value = re.sub(self.upper_lower_regrex("CROSS JOIN "), "<b>CROSS JOIN </b>", relation_value)
-            relation_value = re.sub(self.upper_lower_regrex("DISTINCT "), "<b>DISTINCT </b>", relation_value)
+            # FOR SAS CODE 
+            relation_value = re.sub(self.upper_lower_regrex("DATA_STEP_FLOWCHART"), "<b> <u><h2>DATA_STEP_FLOWCHART</h2></u> </b>", relation_value)
+            relation_value = re.sub(self.upper_lower_regrex("PROC_TRANSPOSE_FLOWCHART"), "<b> <u><h2>PROC_TRANSPOSE_FLOWCHART</h2></u> </b>", relation_value)
+            relation_value = re.sub(self.upper_lower_regrex("PROC_SORT_FLOWCHART"), "<b> <u><h2>PROC_SORT_FLOWCHART</h2></u> </b>", relation_value)
+            # FOR ALL CODE 
+            relation_value = re.sub(self.upper_lower_regrex(" INNER JOIN "), "<b> <u>INNER JOIN</u> </b>", relation_value)
+            relation_value = re.sub(self.upper_lower_regrex(" LEFT JOIN "), "<b> <u>LEFT JOIN</u> </b>", relation_value)
+            relation_value = re.sub(self.upper_lower_regrex(" RIGHT JOIN "), "<b> <u>RIGHT JOIN</u> </b>", relation_value)
+            relation_value = re.sub(self.upper_lower_regrex(" OUTER JOIN "), "<b> <u>OUTER JOIN</u> </b>", relation_value)
+            relation_value = re.sub(self.upper_lower_regrex(" CROSS JOIN "), "<b> <u>CROSS JOIN</u> </b>", relation_value)
+            relation_value = re.sub(self.upper_lower_regrex("DISTINCT "), "<b><u>DISTINCT</u> </b>", relation_value)
+            relation_value = re.sub(self.upper_lower_regrex("CASE "), "<b><u>CASE</u> </b>", relation_value)
+            relation_value = re.sub(self.upper_lower_regrex("WHEN "), "<b><u>WHEN</u> </b>", relation_value)
+            relation_value = re.sub(self.upper_lower_regrex(" THEN "), "<b> <u>THEN</u> </b>", relation_value)
+            relation_value = re.sub(self.upper_lower_regrex(" ELSE "), "<b> <u>ELSE</u> </b>", relation_value)
+            relation_value = re.sub(self.upper_lower_regrex(" NOT "), "<b> <u>NOT</u> </b>", relation_value)
+            relation_value = re.sub(self.upper_lower_regrex(" IS "), "<b> <u>IS</u> </b>", relation_value)
+            relation_value = re.sub(self.upper_lower_regrex(" AS "), "<b> <u>AS</u> </b>", relation_value)
             relation_value = re.sub(self.upper_lower_regrex("ON "), "ON <br>", relation_value)
             relation_value = re.sub(self.upper_lower_regrex("AND "), "AND <br>", relation_value)
             if node[ "state" ].tolist()[0] in ["SELECT"] :
                 relation_value = re.sub(self.upper_lower_regrex(","), ", <br>", relation_value)
 #             print("Need txt relation (Class Sqltoflowchart - def Create_relationtxt)")
         ## Add <center> </center>
-        relation_value = "<center>" + relation_value + "</center>" # Live Editor can get bracket "(" ")"
+        if state != "SELECT" : 
+            relation_value = "<center>" + relation_value + "</center>" # Live Editor can get bracket "(" ")"
+        elif state == "SELECT" : 
+            relation_value =  "\"" + "<center>" + relation_value + "</center>" + "\"" # Live Editor can get bracket "(" ")"
         
         return(relation_value)    
     
     #03 Create mermaid plot
     def mermaid_plot(self, relation_ignore = []):
+        
+        #### Structure Revised (upper the node property values )
+        self.node_property["state_parentname"] = self.node_property["state_parentname"].str.upper() # upper db name 
+        self.node_property["state_realname"] = self.node_property["state_realname"].str.upper()# upper table name
+        
         #### 03_2 Initial Subgraph start drawing
         subgraph_sign = 0 # Record the subgraph , start->set 1, end->set 0
         
@@ -293,10 +316,24 @@ class Sqltoflowchart():
             self.mc.close_sentence()
             
     #04 Draw mermaid plot
-    def mermaid_drawnode(self, keyword, token_tag, color):
-        draw_nodes = self.node_property[(self.node_property["state_parentname"] == keyword) & (self.node_property["token_tag"] == token_tag)]
+    def mermaid_drawnode(self, keyword, token_tag, color, equalkeyword = True):
+        if equalkeyword :
+            draw_nodes = self.node_property[(self.node_property["state_parentname"] == keyword) & (self.node_property["token_tag"] == token_tag)]
+        else :
+             draw_nodes = self.node_property[(self.node_property["state_parentname"] != keyword) & (self.node_property["token_tag"] == token_tag)]
+                
         for node_id in draw_nodes["node_id"]:
             self.mc.add_node_color(node_id, color)
+
+    def mermaid_drawnode_containtxt(self, keytxt, colname, color, allquery_bool = False):
+        draw_nodes = self.node_property[self.node_property[colname].str.contains(keytxt)]
+        if allquery_bool :
+            draw_nodes = self.node_property[ self.node_property["query_id"].isin( draw_nodes["query_id"] ) ]
+            for node_id in draw_nodes["node_id"]:
+                self.mc.add_node_color(node_id, color)
+        else :
+            for node_id in draw_nodes["node_id"]:
+                self.mc.add_node_color(node_id, color)
 
 
 # %%

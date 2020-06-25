@@ -1,0 +1,21 @@
+docker run -itd -p 8001:5000 -v /e/python3/sqlparse/flask/01sqlparseweb:/sqltoflowchart  python:latest /bin/bash
+docker exec -it <container name>  /bin/bash
+## in docker
+pip install --trusted-host pypi.org --trusted-host files.pythonhosted.org sqlparse
+pip install --trusted-host pypi.org --trusted-host files.pythonhosted.org pandas
+pip install --trusted-host pypi.org --trusted-host files.pythonhosted.org flask
+
+python /sqltoflowchart/app.py
+
+
+
+## in server 
+docker import python_sqltoflowchart.tar sqltoflowchart:v1.0
+docker run -itd -p 8001:5000 -v ~/sqltoflowchart/pythonsqltoflowchart:/sqltoflowchart  sqltoflowchart:v1.0  /bin/bash
+docker exec -it <container name>  /bin/bash
+python /sqltoflowchart/01sqlparseweb/app.py
+
+## Kill Service 
+https://stackoverflow.com/questions/15562446/how-to-stop-flask-application-without-using-ctrl-c
+ps aux | grep app.py
+kill processNum

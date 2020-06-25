@@ -8,15 +8,15 @@ Querystate = Querystate()
 
 app = Flask(__name__)
 
-@app.route('/')
-def index():
-    return 'hello man'
+
 
 @app.route("/post_submit", methods=['GET', 'POST'])
 def submit():
     if request.method == 'POST':
         query_o = request.form.get('query')
-        query = re.sub("\\/.*?\\/", "",query_o)
+        query = re.sub("\s+?;",";",query_o)
+        query = re.sub("(\n)|(\r)|(\t)"," ",query)
+        query = re.sub("\\/\\*.*?\\*\\/", "",query)
 
         # query to Structure List to SAS node relation 
         sas_query = Sastructure(query)
@@ -28,13 +28,22 @@ def submit():
 
         # 1. Ignore Some Relation words 
         # 2. Draw some node to colors 
+        # 3. Draw the query to colors 
         sfc.mermaid_plot(relation_ignore = [])
+        ## FOR SAS CODE 
+        sfc.mermaid_drawnode_containtxt(keytxt = "DATA_STEP_FLOWCHART", colname = "state_value", color = "#00FFFF", allquery_bool = True)
+        sfc.mermaid_drawnode_containtxt(keytxt = "PROC_TRANSPOSE_FLOWCHART", colname = "state_value", color = "#00FFFF", allquery_bool = True)
+        sfc.mermaid_drawnode_containtxt(keytxt = "PROC_SORT_FLOWCHART", colname = "state_value", color = "#00FFFF", allquery_bool = True)
+        ## FOR ALL CODE
+        sfc.mermaid_drawnode(keyword = "WORK", token_tag = "token", color = "#F0BBFF", equalkeyword = False)
         sfc.mermaid_drawnode(keyword = "QUERY", token_tag = "token", color = "#28FF28")
         sfc.mermaid_drawnode(keyword = "CR20", token_tag = "token", color = "#FFAA33")
+        sfc.mc.mermaid_txt = re.sub("\n|\r", "",sfc.mc.mermaid_txt)        
+        sfc.mc.mermaid_txt = re.sub(";", ";\n",sfc.mc.mermaid_txt)
         return(render_template('post_submit.html', mermaid = sfc.mc.mermaid_txt, remindtext = query_o))
     return render_template('post_submit.html', remindtext = "SAS Query...")
 
 
 if __name__ == '__main__':
     app.debug = True
-    app.run()
+    app.run(host='0.0.0.0')

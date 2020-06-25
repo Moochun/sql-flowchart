@@ -14,7 +14,9 @@ class Querystate():
     def __init__(self):
         self.subquery_statelist = {"MAIN" : 0, "SELECT" : 0, "FROM" : 0, "WHERE" : 0}
         self.gettoken_statelist = ["TABLE", "SELECT", "FROM", "WHERE", "GROUP BY", "ORDER BY", "LIMIT", "HAVING"]
-        self.nodeorder_statelist = ["FROM", "WHERE", "GROUP BY", "HAVING", "SELECT", "ORDER BY", "LIMIT", "TABLE" ]
+        # GROUP BY -> GROUPBY(hadbeen revised on CLASS Sqlstructre CLASS Querystate-get_tokenstate)
+        # ORDER BY -> ORDERBY(hadbeen revised on CLASS Sqlstructre CLASS Querystate-get_tokenstate)
+        self.nodeorder_statelist = ["FROM", "WHERE", "GROUPBY", "HAVING", "SELECT", "ORDERBY", "LIMIT", "TABLE" ]
 
 
 
