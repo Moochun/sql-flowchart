@@ -35,9 +35,11 @@ def submit():
         sfc.mermaid_drawnode_containtxt(keytxt = "PROC_TRANSPOSE_FLOWCHART", colname = "state_value", color = "#00FFFF", allquery_bool = True)
         sfc.mermaid_drawnode_containtxt(keytxt = "PROC_SORT_FLOWCHART", colname = "state_value", color = "#00FFFF", allquery_bool = True)
         ## FOR ALL CODE
-        sfc.mermaid_drawnode(keyword = "WORK", token_tag = "token", color = "#F0BBFF", equalkeyword = False)
+        sfc.mermaid_drawnode(keyword = ["WORK","","SUBQ"], token_tag = "token", color = "#F0BBFF", equalkeyword = "notsame")
+        sfc.mermaid_drawnode(keyword = "DROP", token_tag = "token", color = "#AAAAAA", equalkeyword = "contain")
         sfc.mermaid_drawnode(keyword = "QUERY", token_tag = "token", color = "#28FF28")
         sfc.mermaid_drawnode(keyword = "CR20", token_tag = "token", color = "#FFAA33")
+
         sfc.mc.mermaid_txt = re.sub("\n|\r", "",sfc.mc.mermaid_txt)        
         sfc.mc.mermaid_txt = re.sub(";", ";\n",sfc.mc.mermaid_txt)
         return(render_template('post_submit.html', mermaid = sfc.mc.mermaid_txt, remindtext = query_o))

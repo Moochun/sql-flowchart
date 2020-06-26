@@ -148,10 +148,10 @@ class Mermaid_creator():
 import pandas as pd
 class Sqltoflowchart():
     
-    def __init__(self, from_to_node = "", from_to_query = "", node_property = [["from","to"],["1","2"]]):
+    def __init__(self, from_to_node = "", from_to_query = "", node_property = ""):
         self.from_to_node = from_to_node
         self.from_to_query = from_to_query
-        self.node_property = pd.DataFrame(node_property[1:], columns= node_property[0])
+        self.node_property = node_property
         self.mc = Mermaid_creator()
     
     # 00_1 regrex Setting (upper and lower no different)
@@ -316,11 +316,19 @@ class Sqltoflowchart():
             self.mc.close_sentence()
             
     #04 Draw mermaid plot
-    def mermaid_drawnode(self, keyword, token_tag, color, equalkeyword = True):
-        if equalkeyword :
+    def mermaid_drawnode(self, keyword, token_tag, color, equalkeyword = "same"):
+        if equalkeyword == "same" :
             draw_nodes = self.node_property[(self.node_property["state_parentname"] == keyword) & (self.node_property["token_tag"] == token_tag)]
-        else :
-             draw_nodes = self.node_property[(self.node_property["state_parentname"] != keyword) & (self.node_property["token_tag"] == token_tag)]
+        elif equalkeyword == "notsame" :
+            # Use ~ flip the result 
+            # https://stackoverflow.com/questions/21055068/reversal-of-string-contains-in-python-pandas
+            draw_nodes = self.node_property[(~self.node_property["state_parentname"].isin(keyword)) & (self.node_property["token_tag"] == token_tag)]
+        
+        elif equalkeyword == "contain" :
+            draw_nodes = self.node_property[(self.node_property["state_parentname"].str.contains(keyword)) & (self.node_property["token_tag"] == token_tag)]
+            
+        elif equalkeyword == "notcontain" :
+            draw_nodes = self.node_property[(~self.node_property["state_parentname"].str.contains(keyword)) & (self.node_property["token_tag"] == token_tag)]
                 
         for node_id in draw_nodes["node_id"]:
             self.mc.add_node_color(node_id, color)

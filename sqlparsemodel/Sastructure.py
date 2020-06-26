@@ -9,6 +9,7 @@ from sqlparsemodel.Querystate import Querystate
 from sqlparsemodel.Mermaidplot import Sqltoflowchart
 import re 
 import pandas as pd 
+import copy
 Querystate = Querystate()
 sfc = Sqltoflowchart()
 
@@ -22,8 +23,10 @@ sfc = Sqltoflowchart()
 class Sastructure():
     
     def __init__(self, query):
-        self.sql_parsed_list = self.__sassql_parsed( query )
+        self.sql_parsed_list, self.drop_dict = self.__sassql_parsed( query )
         self.node_dict, self.node_property, self.from_to_property = self.__sassql_nodelist( self.sql_parsed_list )
+        self.node_property = pd.DataFrame( self.node_property[1:], columns = self.node_property[0] )
+        self.__node_property_change()
         self.from_to_query = self.__query_relation( self.node_property )
         
         
@@ -39,6 +42,63 @@ class Sastructure():
 # ### DATA STEP
 # ### PROC TRANSPOSE
 # ### PROC SORT
+
+# %%
+    def __node_property_change(self):
+        
+        # 01Upper db name and table name to connect the query relation 
+        self.node_property["state_parentname"] = self.node_property["state_parentname"].str.upper() # upper db name 
+        self.node_property["state_realname"] = self.node_property["state_realname"].str.upper()# upper table name
+        
+        # 02 Subquery table value need to Add Main query table name before
+        ## 02-1 get query id -> table name 
+        ## 02-2 subq name -> bind the table name and subq name
+        ## 02-3 find node id and Replace the value in Pandas
+        subq_nodes = self.node_property[(self.node_property["subq_name"].str.contains("MAIN_")) & (self.node_property["state"] == "TABLE")]
+        for idx in range(len(subq_nodes)):
+            node_id = subq_nodes.iloc[idx]["node_id"]
+            query_id = subq_nodes.iloc[idx]["query_id"]
+            subq_name = subq_nodes.iloc[idx]["state_value"]
+            table_name = self.node_property[(self.node_property["query_id"] == query_id) & (self.node_property["subq_name"] == "MAIN") & (self.node_property["state"] == "TABLE")]["state_value"].values[0] # pandas get values to be string
+            final_name = table_name + "--" + subq_name
+            self.node_property.at[self.node_property["node_id"] == node_id, "state_value"] = final_name
+            
+        # 03 DROP tables renames token and value (self.drop_dict)
+        ## 03_1 Revised the dbname from origin to DROP....
+        ## 03_2 2 kind of TABLE NAME. (First find the drop table name)
+            ### 03_2_1 WORK or No DB Nname -> search "" and "WORK" replace to DROP...
+            ### 03_2_2 Other -> search "<DBNAME>" to DROP.... 
+        for item in self.drop_dict.items():
+            key_dbname = item[0]
+            value_dropnames = item[1]
+            dropname_list = re.split("\\.", re.sub("WORK\\.", "",value_dropnames["drop_name"]))
+            
+            print("SASstructure:__node_property_change:DROP tables renames============================")
+            print(key_dbname)
+            print(value_dropnames)
+            print(dropname_list)
+            kind1_bool = ""
+            kind2_bool = ""
+            kind3_bool = ""
+            
+            if len(dropname_list) == 1 :
+                kind1_bool = self.node_property["query_id"].isin(value_dropnames["query_ids"]) & (self.node_property["state_parentname"] == "") & (self.node_property["state_realname"] == dropname_list[0].upper())
+                kind2_bool = self.node_property["query_id"].isin(value_dropnames["query_ids"]) & (self.node_property["state_parentname"] == "WORK") & (self.node_property["state_realname"] == dropname_list[0].upper())
+                
+                self.node_property.at[kind1_bool , "state_parentname"] = key_dbname
+                self.node_property.at[kind2_bool , "state_parentname"] = key_dbname
+                self.node_property.at[kind1_bool, "state_value"] = self.node_property[kind1_bool]["state_value"].str.cat(["," + key_dbname]*kind1_bool.sum())
+                self.node_property.at[kind2_bool, "state_value"] = self.node_property[kind2_bool]["state_value"].str.cat(["," + key_dbname]*kind2_bool.sum())
+                
+                
+            elif len(dropname_list) == 2 :
+                kind3_bool = self.node_property["query_id"].isin(value_dropnames["query_ids"]) & (self.node_property["state_parentname"] == dropname_list[0].upper()) & (self.node_property["state_realname"] == dropname_list[1].upper())
+                self.node_property.at[kind3_bool , "state_parentname"] = key_dbname
+                self.node_property.at[kind3_bool, "state_value"] = self.node_property[kind3_bool]["state_value"].str.cat(["," + key_dbname]*kind3_bool.sum())
+        
+        
+
+        
 
 # %%
     def __from_to_check(self, from_id, to_id, now_id):
@@ -94,15 +154,44 @@ class Sastructure():
         ### If Just Sql not the SAS SQL set to all string
         if len(proc_sql) == 0 and len(data_step) == 0 and len(proc_transpose) == 0 and len(proc_sort) == 0 : 
             proc_sql = [query]
+        
+        
+        ### 1. PROC SQL : Catch detail sql to flowchart 
+        #### 1. CREATE .... ; 2. SELECT ..... ; 3. DROP .....; 
+        proc_sql_detail = []
+        for sql in proc_sql :
+            proc_sql_detail = proc_sql_detail + re.findall("\s+" + sfc.upper_lower_regrex("CREATE") + ".*?;" + "|" + "\s+" + sfc.upper_lower_regrex("SELECT") + ".*?;" + "|" + "\s+" + sfc.upper_lower_regrex("DROP") + ".*?;", sql)
             
+        
             
         ###  1. PROC SQL catch flow ==========================================
-        for string in proc_sql:
+        drop_dict = {}
+        drop_queryids = []
+        drop_count = 0
+        for string in proc_sql_detail :
+           
+            
             string = re.sub(sfc.upper_lower_regrex("PROC") + "\s+" + sfc.upper_lower_regrex("SQL;"), "", string)
-            if string.strip() == "":
+            
+            ### (Record Drop) to the dictionary for node property revised
+            if re.findall("\s+" + sfc.upper_lower_regrex("DROP") + ".*?;", string) and len(drop_queryids) != 0 :
+                drop_count += 1
+                drop_tb_name = re.findall(sfc.upper_lower_regrex("DROP") + "\s+" + sfc.upper_lower_regrex("TABLE") + "(.*?);", string)
+                drop_tb_name = drop_tb_name[0].strip()
+                drop_dict["DROP" + str(drop_count)] = {"drop_name" : drop_tb_name, 
+                                                       "query_ids" : copy.deepcopy(drop_queryids) }
+                
+            ## String is empty or is DROP QUERY ->  ignore
+            if string.strip() == "" or len(re.findall("\s+" + sfc.upper_lower_regrex("DROP") + ".*?;", string)) > 0:
                 continue
+            
+            ## Sql structure show
             query_id += 1
             sql_parsed_list[ str(query_id) ] = Sqlstructure(string)
+            
+            ### (Record Drop) query_id for node property revised
+            drop_queryids.append(str(query_id))
+            
             
             # Only Select -> get MAIN query and Set QUERYID.query <query_id> be the TABLE name
             if "TABLE" not in list( sql_parsed_list[ str(query_id) ].structured_dict['MAIN'].keys() ):
@@ -214,7 +303,7 @@ class Sastructure():
             string += " AND(PROC_SORT_FLOWCHART)"
             sql_parsed_list[ str(query_id) ] = Sqlstructure(string)
         
-        return( sql_parsed_list )
+        return( sql_parsed_list , drop_dict)
 
 # %% [markdown]
 # ## PROC SQLs to relation structure
@@ -352,9 +441,7 @@ class Sastructure():
 
 # %%
     def __query_relation(self, node_property) :
-        node_df = pd.DataFrame( node_property[1:], columns = node_property[0] )
-        node_df["state_parentname"] = node_df["state_parentname"].str.upper() # upper db name 
-        node_df["state_realname"] = node_df["state_realname"].str.upper()# upper table name
+        node_df = node_property
         fromtokens = node_df[ (node_df["state"] == "FROM") & (node_df["token_tag"] == "token") & (node_df["state_parentname"] != "SUBQ") ]
         tabletokens = node_df[ (node_df["state"] == "TABLE") & (node_df["token_tag"] == "token") & (node_df["state_parentname"] != "SUBQ")]
         sub_fromtokens = node_df[ (node_df["state"] == "FROM") & (node_df["token_tag"] == "token") & (node_df["state_parentname"] == "SUBQ") ]
